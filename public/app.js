@@ -10,6 +10,19 @@ const api = async (p, o = {}) => {
   return j;
 };
 const toast = m => alert(m);
+// ছবি আপলোডের আগে JPEG-এ বদলে নেয় (Messenger/WhatsApp webp দেখাতে পারে না)
+const toJpegDataUrl = file => new Promise((resolve, reject) => {
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onload = () => {
+    const k = Math.min(1, 1200 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.85));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('ছবি পড়া যায়নি')); };
+  img.src = url;
+});
 const guard = fn => async (...a) => { try { return await fn(...a); } catch (e) { if (e.message !== 'login') toast('⚠ ' + e.message); } };
 const PL = { messenger: ['Messenger', '#0a84ff'], instagram: ['Instagram', '#d6249f'], whatsapp: ['WhatsApp', '#25a244'], web: ['টেস্ট', '#777'] };
 const plb = p => `<span class="pill" style="background:${(PL[p] || ['', '#777'])[1]}">${(PL[p] || [p])[0]}</span>`;
@@ -32,7 +45,7 @@ async function boot() {
 function drawTop() {
   $('#top').innerHTML = `<span class="brand">🤖 Shop Agent</span>` + TABS.filter(t => !t[2] || ME.role === 'owner').map(t => `<button class="tabb ${tab === t[0] ? 'on' : ''}" data-a="tab" data-t="${t[0]}">${t[1]}</button>`).join('')
     + `<a href="/simulator.html" target="_blank" class="tabb" style="text-decoration:none">🧪 সিমুলেটর</a><span class="sp"></span>`
-    + `<span class="small mut" title="${SET.hasAI ? 'Gemini চালু' : 'Gemini key নেই: ডেমো মোড'}">${SET.hasAI ? '🟢 AI' : '🟠 ডেমো'}</span> <span class="chip">${SET.aiLive ? '🔴 লাইভ' : '🧪 প্র্যাক্টিস'}</span>`
+    + `<span class="small mut" title="${SET.hasAI ? 'Gemini চালু' : 'Gemini key নেই: ডেমো মোড'}">${SET.hasAI ? '🟢 AI' : '🟠 ডেমো'}</span> ${ME.role === 'owner' ? `<button class="sm ${SET.aiLive ? 'bad' : 'sec'}" data-a="toggleLive" title="ক্লিক করে লাইভ / প্র্যাক্টিস বদলান">${SET.aiLive ? '🔴 লাইভ' : '🧪 প্র্যাক্টিস'}</button>` : `<span class="chip">${SET.aiLive ? '🔴 লাইভ' : '🧪 প্র্যাক্টিস'}</span>`}`
     + `<button class="bell" data-a="bell">🔔${unread ? `<b>${unread}</b>` : ''}</button><span class="small">${esc(ME.name)}</span><button class="sec sm" data-a="logout">বের হন</button>`;
 }
 function go(t) { tab = t; location.hash = t; drawTop(); ({ inbox: viewInbox, orders: viewOrders, leads: viewLeads, products: viewProducts, reports: viewReports, desk: viewDesk, team: viewTeam, settings: viewSettings }[t] || viewInbox)(); }
@@ -182,7 +195,7 @@ function pForm(p) {
   <div class="g2"><div><label>সাইজ ও স্টক (প্রতি লাইনে একটা: <code>M:5</code>)। সাইজ না থাকলে ফাঁকা রাখুন</label><textarea id="pv">${(p.variants || []).map(v => v.label + ':' + v.stock).join('\n')}</textarea></div><div><label>সাইজ না থাকলে মোট স্টক</label><input id="pst" type="number" value="${p.stock || 0}"><label>কীওয়ার্ড (কমা দিয়ে)</label><input id="pk" value="${esc(p.keywords || '')}"><label>ফেসবুক/ইনস্টা পোস্ট ID (কমা দিয়ে, কমেন্ট থেকে প্রোডাক্ট চেনার জন্য)</label><input id="ppo" value="${esc((p.postIds || []).join(', '))}"></div></div>
   <label>ছবি</label><div id="pim" class="row"></div><div class="row" style="margin-top:6px"><input type="file" id="pfile" accept="image/*" multiple style="width:auto"><input id="purl" class="grow" placeholder="অথবা ছবির লিংক"><button class="sec sm" data-a="pAddUrl">লিংক যোগ</button></div>
   <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pact" style="width:auto" ${p.active !== false ? 'checked' : ''}> সক্রিয় (AI দেখাবে)</label><div class="row" style="margin-top:8px"><button data-a="pSave" data-p="${p.id || ''}">সেভ</button><button class="sec" data-a="pCancel">বাতিল</button></div></div>`;
-  drawImgs(); $('#pfile').onchange = guard(async e => { for (const f of e.target.files) { const d = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); }); window._pimgs.push((await api('/upload', { body: { dataUrl: d } })).url); } drawImgs(); });
+  drawImgs(); $('#pfile').onchange = guard(async e => { for (const f of e.target.files) { const d = await toJpegDataUrl(f); window._pimgs.push((await api('/upload', { body: { dataUrl: d } })).url); } drawImgs(); });
 }
 function drawImgs() { $('#pim').innerHTML = window._pimgs.map((u, i) => `<div style="position:relative"><img class="thumb" src="${esc(u)}"><span data-a="pImgDel" data-i="${i}" style="position:absolute;top:-6px;right:-6px;background:#d93a3a;color:#fff;border-radius:50%;width:18px;height:18px;text-align:center;cursor:pointer;font-size:12px">×</span></div>`).join('') || '<span class="mut small">ছবি নেই</span>'; }
 
@@ -274,6 +287,18 @@ const act = {
   deskLive: guard(async () => { await api('/settings', { method: 'PUT', body: { rulesDraft: $('#rd').value } }); if (!confirm('এই নিয়ম এখন থেকে সব কাস্টমারের সাথে চলবে। লাইভ করব?')) return; await api('/desk/live', { body: {} }); toast('🚀 লাইভ হয়েছে'); viewDesk(); }),
   deskRevert: guard(async () => { if (!confirm('আগের ভার্সনে ফিরব?')) return; await api('/desk/revert', { body: {} }); viewDesk(); }),
   deskTest: guard(async () => { const m = $('#tm').value.trim(); if (!m) return; $('#tr').textContent = '⏳'; const r = (await api('/desk/test', { body: { message: m, rules: $('#rd').value } })).plan; $('#tr').innerHTML = `<div class="note" style="background:#f3f0ff;white-space:pre-wrap"><b>AI-র উত্তর:</b>\n${esc(r.reply || '(কোনো টেক্সট নেই)')}</div><div class="small mut" style="margin-top:6px">অ্যাকশন: <b>${esc(r.action)}</b>${r.product_codes.length ? ' · প্রোডাক্ট: ' + esc(r.product_codes.join(', ')) : ''}${r.handover_reason ? ' · হ্যান্ডওভার কারণ: ' + esc(r.handover_reason) : ''}${r.intent ? ' · উদ্দেশ্য: ' + esc(r.intent) : ''}</div>`; }),
+  // হেডারের লাইভ / প্র্যাক্টিস বাটন
+  toggleLive: guard(async () => {
+    const next = !SET.aiLive;
+    const msg = next
+      ? 'AI এখন থেকে সরাসরি সব কাস্টমারকে উত্তর দেবে। লাইভ করবেন?'
+      : 'প্র্যাক্টিস মোডে AI কাস্টমারকে নিজে উত্তর পাঠাবে না (শুধু ড্রাফট হবে)। চালু করবেন?';
+    if (!confirm(msg)) return;
+    SET = { ...SET, ...(await api('/settings', { method: 'PUT', body: { aiLive: next } })) };
+    drawTop();
+    toast(next ? '🔴 AI এখন লাইভ' : '🧪 প্র্যাক্টিস মোড চালু');
+    if (tab === 'settings') viewSettings();
+  }),
   // টিম/সেটিংস
   uAdd: guard(async () => { await api('/users', { body: { name: $('#un').value, email: $('#ue').value, password: $('#up').value } }); viewTeam(); }),
   uDel: guard(async (_, el) => { if (confirm('সরাবেন?')) { await api('/users/' + el.dataset.u, { method: 'DELETE' }); viewTeam(); } }),

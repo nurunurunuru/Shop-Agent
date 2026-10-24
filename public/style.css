@@ -33,3 +33,10 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;bord
 .back{display:none}
 @media(max-width:1100px){.inbox{grid-template-columns:300px 1fr}.inbox .side{display:none}}
 @media(max-width:800px){.inbox{grid-template-columns:1fr}.inbox .thr{display:none}.inbox.st .lst{display:none}.inbox.st .thr{display:flex}.back{display:inline-block}.cols,.g2{grid-template-columns:1fr}.msg{max-width:92%}}
+
+/* inbox scroll + composer fix */
+.inbox{height:calc(100vh - 120px);min-height:420px}
+.thr>#thread{display:flex;flex-direction:column;flex:1;min-height:0}
+.thr>#thread>.th{flex:0 0 auto}
+.thr>#thread>.msgs{flex:1 1 auto;min-height:0;overflow-y:auto}
+.thr>#thread>.comp{flex:0 0 auto;background:#fff}

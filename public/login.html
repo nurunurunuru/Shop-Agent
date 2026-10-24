@@ -1,0 +1,9 @@
+<!DOCTYPE html><html lang="bn"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>লগইন</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="login card"><h2>🤖 Shop Agent — লগইন</h2>
+<label>ইমেইল</label><input id="e" type="email" autocomplete="username"><label>পাসওয়ার্ড</label><input id="p" type="password" autocomplete="current-password">
+<p id="err" style="color:#d93a3a"></p><button id="go" style="width:100%">লগইন</button></div>
+<script>
+fetch('/api/auth/state').then(r=>r.json()).then(s=>{if(!s.hasUsers)location='/setup.html';else if(s.user)location='/app.html'});
+async function go(){const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e.value,password:p.value})});const j=await r.json();if(r.ok)location='/app.html';else err.textContent=j.error}
+go_=document.getElementById('go');go_.onclick=go;p.onkeydown=ev=>{if(ev.key==='Enter')go()};
+</script></body></html>

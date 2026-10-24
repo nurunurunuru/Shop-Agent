@@ -1,0 +1,21 @@
+<!DOCTYPE html><html lang="bn"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>কাস্টমার সিমুলেটর</title><link rel="stylesheet" href="/style.css">
+<style>.wrap{max-width:460px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:#fff;border-left:1px solid var(--line);border-right:1px solid var(--line)}.m{flex:1;overflow:auto;padding:12px;background:#f7f8fb;display:flex;flex-direction:column;gap:8px}.b{max-width:80%;padding:8px 11px;border-radius:14px;background:#fff;border:1px solid var(--line);align-self:flex-start}.b.c{align-self:flex-end;background:var(--pri);color:#fff}.bt{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.bt button{background:#fff;color:var(--pri);border:1px solid var(--pri)}.ctr{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}</style></head>
+<body><div class="wrap"><div class="th" style="padding:10px"><b>🧪 কাস্টমার সিমুলেটর</b> <a href="/app.html" class="small">← ড্যাশবোর্ড</a><br><span class="mut small">Meta ছাড়াই এখানে কাস্টমার সেজে কথা বলে AI টেস্ট করুন।</span><br><label style="display:inline">নাম: <input id="nm" style="width:140px;display:inline" value="রহিম"></label> <button class="sec sm" id="rs">নতুন কাস্টমার</button></div>
+<div class="m" id="m"></div><div class="ctr"><input type="file" id="f" accept="image/*" hidden><button class="sec" id="im">📷</button><input id="t" placeholder="মেসেজ লিখুন…"><button id="s">পাঠান</button></div></div>
+<script>
+const $=id=>document.getElementById(id);let sid=localStorage.sid||(localStorage.sid='sim'+Math.random().toString(36).slice(2,8));let last='';
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function post(o){await fetch('/api/sim/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sid,name:$('nm').value,...o})});poll()}
+function btns(a){return a&&a.length?'<div class="bt">'+a.map(b=>`<button class="sm" data-p="${esc(b.payload)}" data-t="${esc(b.title)}">${esc(b.title)}</button>`).join('')+'</div>':''}
+function render(ms){const h=JSON.stringify(ms);if(h===last)return;last=h;$('m').innerHTML=ms.map(m=>{const c=m.role==='customer';let x='';
+ if(m.type==='image')x=`<img src="${esc(m.mediaUrl)}" style="max-width:200px;border-radius:8px">${m.text?esc(m.text):''}`;
+ else if(m.type==='cards')x='<div style="display:flex;gap:8px;overflow:auto">'+(m.payload.items||[]).map(i=>`<div style="min-width:160px;border:1px solid var(--line);border-radius:10px;padding:6px">${i.image?`<img src="${esc(i.image)}" style="width:100%;height:90px;object-fit:cover;border-radius:6px">`:''}<b>${esc(i.title)}</b><div class="small">${esc(i.subtitle)}</div>${btns(i.buttons)}</div>`).join('')+'</div>';
+ else x=esc(m.text).replace(/\n/g,'<br>')+btns(m.payload&&m.payload.buttons);
+ return `<div class="b ${c?'c':''}">${x}</div>`}).join('');$('m').scrollTop=1e9}
+async function poll(){const r=await fetch('/api/sim/messages?sid='+sid);if(r.status===401)return location='/login.html';render(await r.json())}
+$('m').onclick=e=>{const b=e.target.closest('button[data-p]');if(b)post({postback:b.dataset.p,text:b.dataset.t})};
+$('s').onclick=()=>{const v=$('t').value.trim();if(v){$('t').value='';post({text:v})}};$('t').onkeydown=e=>{if(e.key==='Enter')$('s').click()};
+$('im').onclick=()=>$('f').click();$('f').onchange=()=>{const f=$('f').files[0];if(!f)return;const r=new FileReader();r.onload=()=>{post({image:r.result});$('f').value=''};r.readAsDataURL(f)};
+$('rs').onclick=()=>{localStorage.sid='sim'+Math.random().toString(36).slice(2,8);sid=localStorage.sid;last='';$('m').innerHTML=''};
+poll();setInterval(poll,2000);
+</script></body></html>

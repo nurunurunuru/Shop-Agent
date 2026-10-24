@@ -1,0 +1,8 @@
+<!DOCTYPE html><html lang="bn"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>প্রথম সেটআপ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="login card"><h2>👋 প্রথম সেটআপ: মালিকের অ্যাকাউন্ট</h2><p class="mut small">এই অ্যাকাউন্টটাই মালিক (Owner)। পরে টিমমেট যোগ করতে পারবেন।</p>
+<label>আপনার নাম</label><input id="n"><label>ইমেইল</label><input id="e" type="email"><label>পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label><input id="p" type="password">
+<p id="err" style="color:#d93a3a"></p><button id="go" style="width:100%">অ্যাকাউন্ট বানান</button></div>
+<script>
+fetch('/api/auth/state').then(r=>r.json()).then(s=>{if(s.hasUsers)location='/login.html'});
+document.getElementById('go').onclick=async()=>{const r=await fetch('/api/auth/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n.value,email:e.value,password:p.value})});const j=await r.json();if(r.ok)location='/app.html';else err.textContent=j.error};
+</script></body></html>

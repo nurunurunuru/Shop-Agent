@@ -119,7 +119,7 @@ router.put('/products/:id', w(async (req, res) => {
 router.delete('/products/:id', w(async (req, res) => { const d = D(); d.products = d.products.filter(p => p.id !== req.params.id); S.save(); res.json({ ok: true }); }));
 router.post('/upload', w(async (req, res) => {
   const f = U.parseDataUrl(req.body.dataUrl); if (!f || !/^image\//.test(f.mime)) bad('শুধু ছবি আপলোড করা যাবে');
-  res.json({ url: U.saveUpload(f.buf, f.mime) });
+  res.json({ url: await U.uploadImage(f.buf, f.mime) });
 }));
 
 // ---------- অর্ডার ----------

@@ -36,5 +36,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n✅ Shop Agent চালু: http://localhost:${PORT}`);
   console.log(`   Gemini: ${process.env.GEMINI_API_KEY ? 'চালু' : '❌ GEMINI_API_KEY নেই (ডেমো মোড)'} | কুরিয়ার: ${process.env.COURIER_MODE || 'mock'}`);
+  console.log(`   ছবি রাখা: ${U.cloudOn() ? 'Cloudinary ✅' : '⚠️ লোকাল ডিস্ক (Render-এ রিস্টার্টে মুছে যাবে)'}`);
   console.log(`   PUBLIC_URL: ${process.env.PUBLIC_URL || '❌ নেই (ছবি Meta-তে যাবে না)'}\n`);
 });

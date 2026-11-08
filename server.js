@@ -5,6 +5,7 @@ const app = express();
 app.use(express.json({ limit: '15mb' }));
 app.use('/uploads', express.static(U.UP, { maxAge: '7d' }));
 app.use('/webhook', require('./routes/webhook'));
+app.use('/steadfast/webhook', require('./routes/steadfast'));
 
 // ---- লগইন ও সেটআপ ----
 const api = express.Router();
@@ -37,6 +38,7 @@ S.init().then(() => app.listen(PORT, () => {
   console.log(`\n✅ Shop Agent চালু: http://localhost:${PORT}`);
   console.log(`   Gemini: ${process.env.GEMINI_API_KEY ? 'চালু' : '❌ GEMINI_API_KEY নেই (ডেমো মোড)'} | কুরিয়ার: ${process.env.COURIER_MODE || 'mock'}`);
   console.log(`   ছবি রাখা: ${U.cloudOn() ? 'Cloudinary ✅' : '⚠️ লোকাল ডিস্ক (Render-এ রিস্টার্টে মুছে যাবে)'}`);
+  console.log(`   Steadfast webhook: ${process.env.STEADFAST_WEBHOOK_TOKEN ? 'চালু (/steadfast/webhook)' : '⚠️ STEADFAST_WEBHOOK_TOKEN নেই (বন্ধ)'}`);
   console.log(`   PUBLIC_URL: ${process.env.PUBLIC_URL || '❌ নেই (ছবি Meta-তে যাবে না)'}\n`);
 }))
   .catch(e => { console.error('❌ ডেটাবেস চালু হয়নি:', e.message); process.exit(1); });

@@ -78,7 +78,7 @@ router.post('/conversations/:id/attach', needAny('inbox'), w(async (req, res) =>
   const c = conv(req.params.id, req), files = Array.isArray(req.body.files) ? req.body.files : [];
   if (!files.length) bad('ফাইল বাছুন');
   for (const f of files) {
-    if (!/^\/uploads\/[\w.-]+$/.test(String(f.url))) bad('ফাইলের ঠিকানা ভুল');
+    if (!/^(\/uploads\/[\w.-]+|https:\/\/res\.cloudinary\.com\/\S+)$/.test(String(f.url))) bad('ফাইলের ঠিকানা ভুল');
     await E.agentSendFile(c, req.user, { url: f.url, kind: ['image', 'video', 'file'].includes(f.kind) ? f.kind : 'file', name: str(f.name, 100) });
   }
   res.json({ ok: true });
@@ -154,7 +154,7 @@ router.post('/upload', needAny('inbox', 'products'), w(async (req, res) => {
   const f = U.parseDataUrl(req.body.dataUrl); if (!f) bad('ফাইল পড়া যায়নি');
   if (!U.ALLOWED.test(f.mime)) bad('এই ধরনের ফাইল আপলোড করা যায় না (ছবি, MP4 ভিডিও, PDF, Word/Excel চলবে)');
   if (f.buf.length > 10 * 1024 * 1024) bad('ফাইল ১০MB-এর বেশি');
-  res.json({ url: U.saveUpload(f.buf, f.mime), kind: U.fileKind(f.mime), name: str(req.body.name, 100), size: f.buf.length });
+  res.json({ url: await U.saveUpload(f.buf, f.mime), kind: U.fileKind(f.mime), name: str(req.body.name, 100), size: f.buf.length });
 }));
 
 // ---------- অর্ডার ----------

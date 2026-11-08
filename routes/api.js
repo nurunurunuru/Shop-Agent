@@ -25,6 +25,7 @@ router.get('/events', (req, res) => {
   req.on('close', () => { E.bus.off('e', on); clearInterval(ka); });
 });
 router.get('/me', (req, res) => res.json({ user: A.pub(req.user), settings: { aiLive: D().settings.aiLive, hasAI: AI.hasAI(), courier: Courier.mode(), publicUrl: process.env.PUBLIC_URL || '', businessName: D().settings.businessName } }));
+router.get('/courier/check', needAny('orders'), w(async (req, res) => res.json(await Courier.check())));
 
 // ---------- ইনবক্স ----------
 const view = c => {

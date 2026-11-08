@@ -5,5 +5,5 @@
 <script>
 fetch('/api/auth/state').then(r=>r.json()).then(s=>{if(!s.hasUsers)location='/setup.html';else if(s.user)location='/app.html'});
 async function go(){const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e.value,password:p.value})});const j=await r.json();if(r.ok)location='/app.html';else err.textContent=j.error}
-go_=document.getElementById('go');go_.onclick=go;p.onkeydown=ev=>{if(ev.key==='Enter')go()};
+document.getElementById('go').onclick=go;p.onkeydown=ev=>{if(ev.key==='Enter')go()};
 </script></body></html>

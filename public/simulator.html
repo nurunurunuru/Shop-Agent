@@ -9,6 +9,8 @@ async function post(o){await fetch('/api/sim/send',{method:'POST',headers:{'Cont
 function btns(a){return a&&a.length?'<div class="bt">'+a.map(b=>`<button class="sm" data-p="${esc(b.payload)}" data-t="${esc(b.title)}">${esc(b.title)}</button>`).join('')+'</div>':''}
 function render(ms){const h=JSON.stringify(ms);if(h===last)return;last=h;$('m').innerHTML=ms.map(m=>{const c=m.role==='customer';let x='';
  if(m.type==='image')x=`<img src="${esc(m.mediaUrl)}" style="max-width:200px;border-radius:8px">${m.text?esc(m.text):''}`;
+ else if(m.type==='video')x=`<video src="${esc(m.mediaUrl)}" controls style="max-width:220px"></video>`;
+ else if(m.type==='file')x=`<a href="${esc(m.mediaUrl)}" target="_blank">📎 ${esc(m.text||'ফাইল')}</a>`;
  else if(m.type==='cards')x='<div style="display:flex;gap:8px;overflow:auto">'+(m.payload.items||[]).map(i=>`<div style="min-width:160px;border:1px solid var(--line);border-radius:10px;padding:6px">${i.image?`<img src="${esc(i.image)}" style="width:100%;height:90px;object-fit:cover;border-radius:6px">`:''}<b>${esc(i.title)}</b><div class="small">${esc(i.subtitle)}</div>${btns(i.buttons)}</div>`).join('')+'</div>';
  else x=esc(m.text).replace(/\n/g,'<br>')+btns(m.payload&&m.payload.buttons);
  return `<div class="b ${c?'c':''}">${x}</div>`}).join('');$('m').scrollTop=1e9}

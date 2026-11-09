@@ -1,9 +1,11 @@
 <!DOCTYPE html><html lang="bn"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>অ্যাকাউন্ট খুলুন</title><link rel="stylesheet" href="/style.css"></head>
-<body><div class="login card"><h2>👋 অ্যাকাউন্ট খুলুন</h2><p class="mut small">এটা প্রথমবারের সেটআপ। এই অ্যাকাউন্টটাই মালিক (Owner)। খোলার পর এই পেজ আর আসবে না, শুধু লগইন আসবে।</p>
+<body><div class="login card"><h2>👋 নতুন অ্যাকাউন্ট খুলুন</h2><p class="mut small">আপনার দোকানের জন্য আলাদা অ্যাকাউন্ট হবে। আপনিই মালিক (Owner)। খোলার পর "🔗 কানেক্ট" ট্যাব থেকে বাটন চেপে Facebook পেজ, Instagram ও WhatsApp যুক্ত করবেন।</p>
 <div id="cw" hidden><label>সেটআপ কোড (বিক্রেতা আপনাকে দিয়েছেন)</label><input id="c"></div>
-<label>আপনার নাম</label><input id="n"><label>ইমেইল</label><input id="e" type="email"><label>পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label><input id="p" type="password">
-<p id="err" style="color:#d93a3a"></p><button id="go" style="width:100%">অ্যাকাউন্ট খুলুন</button></div>
+<label>দোকানের নাম</label><input id="s" placeholder="যেমন: রহিম ফ্যাশন"><label>আপনার নাম</label><input id="n"><label>ইমেইল</label><input id="e" type="email" autocomplete="username"><label>পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label><input id="p" type="password" autocomplete="new-password">
+<p id="err" style="color:#d93a3a"></p><button id="go" style="width:100%">অ্যাকাউন্ট খুলুন</button>
+<p class="small" style="text-align:center;margin-top:12px">আগেই অ্যাকাউন্ট আছে? <a href="/login.html">লগইন করুন</a></p></div>
 <script>
-fetch('/api/auth/state').then(r=>r.json()).then(s=>{if(s.hasUsers)location='/login.html';else if(s.needsCode)document.getElementById('cw').hidden=false});
-document.getElementById('go').onclick=async()=>{const r=await fetch('/api/auth/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c.value,name:n.value,email:e.value,password:p.value})});const j=await r.json();if(r.ok)location='/app.html';else err.textContent=j.error};
+fetch('/api/auth/state').then(r=>r.json()).then(s=>{if(s.user)location='/app.html';else{if(s.needsCode)document.getElementById('cw').hidden=false;if(!s.signupOpen){document.getElementById('go').disabled=true;document.getElementById('err').textContent='এখন নতুন অ্যাকাউন্ট খোলা বন্ধ আছে'}}});
+async function go(){const r=await fetch('/api/auth/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c.value,shopName:s.value,name:n.value,email:e.value,password:p.value})});const j=await r.json();if(r.ok)location='/app.html';else err.textContent=j.error}
+document.getElementById('go').onclick=go;p.onkeydown=ev=>{if(ev.key==='Enter')go()};
 </script></body></html>

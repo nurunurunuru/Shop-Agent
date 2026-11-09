@@ -19,13 +19,16 @@ const nameOf = u => u.name || (u.platform === 'whatsapp' ? '+' + u.externalId : 
 router.get('/events', (req, res) => {
   res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   res.write('retry: 3000\n\n');
-  const on = ev => { if (ev.type === 'notify' && !ev.data.userIds.includes(req.user.id)) return; res.write(`event: ${ev.type}\ndata: ${JSON.stringify(ev.data)}\n\n`); };
+  const on = ev => { if (ev.ws !== req.ws) return; if (ev.type === 'notify' && !ev.data.userIds.includes(req.user.id)) return; res.write(`event: ${ev.type}\ndata: ${JSON.stringify(ev.data)}\n\n`); };
   E.bus.on('e', on);
   const ka = setInterval(() => res.write(': ping\n\n'), 25000);
   req.on('close', () => { E.bus.off('e', on); clearInterval(ka); });
 });
-router.get('/me', (req, res) => res.json({ user: A.pub(req.user), settings: { aiLive: D().settings.aiLive, hasAI: AI.hasAI(), courier: Courier.mode(), publicUrl: process.env.PUBLIC_URL || '', businessName: D().settings.businessName } }));
+router.get('/me', (req, res) => res.json({ user: A.pub(req.user), ws: S.wsId(), settings: { channels: D().channels.pages.length + D().channels.whatsapp.length + (CH.isLegacy() && (process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN) ? 1 : 0), aiLive: D().settings.aiLive, hasAI: AI.hasAI(), courier: Courier.mode(), publicUrl: process.env.PUBLIC_URL || '', businessName: D().settings.businessName } }));
 router.get('/courier/check', needAny('orders'), w(async (req, res) => res.json(await Courier.check())));
+
+// ---------- কানেক্ট (Facebook/Instagram/WhatsApp/কুরিয়ার) ----------
+router.use('/connect', need('settings'), require('./connect').router);
 
 // ---------- ইনবক্স ----------
 const view = c => {
@@ -262,7 +265,9 @@ router.post('/desk/live', need('desk'), w(async (req, res) => { const s = D().se
 router.post('/desk/revert', need('desk'), w(async (req, res) => { const s = D().settings; if (!s.rulesPrev) bad('আগের কোনো ভার্সন নেই'); [s.rulesLive, s.rulesPrev] = [s.rulesPrev, s.rulesLive]; s.rulesDraft = s.rulesLive; S.save(); res.json({ ok: true }); }));
 
 // ---------- সেটিংস ----------
-router.get('/settings', (req, res) => res.json(D().settings));
+const SECRET_KEYS = ['steadfastApiKey', 'steadfastSecretKey', 'steadfastWebhookToken'];
+const safeSettings = () => { const s = { ...D().settings }; s.hasSteadfast = !!(s.steadfastApiKey && s.steadfastSecretKey); SECRET_KEYS.forEach(k => delete s[k]); return s; };
+router.get('/settings', (req, res) => res.json(safeSettings()));
 router.put('/settings', w(async (req, res) => {
   const s = D().settings, b = req.body, keys = Object.keys(b);
   if (keys.some(k => k !== 'rulesDraft') && !A.can(req.user, 'settings')) bad('সেটিংস বদলানোর অনুমতি নেই', 403);
@@ -271,11 +276,11 @@ router.put('/settings', w(async (req, res) => {
   ['deliveryInside', 'deliveryOutside', 'handoverMinutes', 'followupHours', 'returnCharge', 'courierChargeInside', 'courierChargeOutside'].forEach(k => { if (b[k] !== undefined) s[k] = Math.max(0, +b[k] || 0); });
   ['aiLive', 'followupEnabled', 'commentReplyEnabled'].forEach(k => { if (b[k] !== undefined) s[k] = !!b[k]; });
   if (b.commentMode !== undefined) s.commentMode = b.commentMode === 'all' ? 'all' : 'intent';
-  S.save(); res.json(s);
+  S.save(); res.json(safeSettings());
 }));
 router.get('/meta/check', need('settings'), w(async (req, res) => {
   const out = { page: null, error: '', needed: CH.NEEDED, publicOk: CH.publicOk() };
-  if (!process.env.PAGE_ACCESS_TOKEN) out.error = 'PAGE_ACCESS_TOKEN .env-এ নেই';
+  if (!D().channels.pages.length && !(CH.isLegacy() && process.env.PAGE_ACCESS_TOKEN)) out.error = 'কোনো Facebook পেজ কানেক্ট করা নেই — "🔗 কানেক্ট" ট্যাব থেকে কানেক্ট করুন';
   else { try { out.page = await CH.pageSubs(); } catch (e) { out.error = CH.errMsg(e); } }
   res.json(out);
 }));
@@ -285,16 +290,16 @@ router.post('/meta/subscribe', need('settings'), w(async (req, res) => {
 }));
 // ডেটা ব্যাকআপ/রিস্টোর (Render ফ্রি প্ল্যানে ডিপ্লয়ে ফাইল মুছে যায়, তাই নিয়মিত ব্যাকআপ নিন)
 router.get('/backup', A.ownerOnly, w(async (req, res) => {
-  const d = { ...D(), sessions: {} }, files = {};
+  const { channels, ...rest } = D(), d = { ...rest, sessions: {}, settings: { ...rest.settings, steadfastApiKey: '', steadfastSecretKey: '', steadfastWebhookToken: '' } }, files = {};
   try { for (const f of fs.readdirSync(U.UP)) if (/^[\w.-]+$/.test(f)) files[f] = fs.readFileSync(path.join(U.UP, f)).toString('base64'); } catch {}
   res.set({ 'Content-Type': 'application/json', 'Content-Disposition': `attachment; filename="shop-agent-backup-${U.day(Date.now())}.json"` });
   res.send(JSON.stringify({ version: 2, at: Date.now(), data: d, files }));
 }));
 router.post('/restore', A.ownerOnly, w(async (req, res) => {
   const { data, files } = req.body || {}; if (!data || !Array.isArray(data.users) || !Array.isArray(data.orders)) bad('এটা সঠিক ব্যাকআপ ফাইল না');
-  const d = D();
+  const d = D(), keep = Object.fromEntries(SECRET_KEYS.map(k => [k, d.settings[k]]));
   for (const k of ['settings', 'users', 'products', 'customers', 'conversations', 'messages', 'orders', 'leads', 'notifications', 'offers', 'comments', 'counters']) if (data[k] !== undefined) d[k] = data[k];
-  S.migrate(); d.sessions = {};
+  S.migrate(); Object.assign(S.D().settings, keep);
   let n = 0; for (const [name, b64] of Object.entries(files || {})) if (/^[\w.-]+$/.test(name)) { fs.writeFileSync(path.join(U.UP, name), Buffer.from(b64, 'base64')); n++; }
   S.save(); res.json({ ok: true, files: n });
 }));
@@ -321,7 +326,7 @@ router.patch('/users/:id', need('team'), w(async (req, res) => {
 router.delete('/users/:id', need('team'), w(async (req, res) => {
   const t = D().users.find(u => u.id === req.params.id); if (!t) bad('নেই', 404);
   if (req.params.id === req.user.id) bad('নিজেকে মুছা যাবে না'); if (t.role === 'owner') bad('মালিককে সরানো যায় না');
-  const d = D(); d.users = d.users.filter(u => u.id !== req.params.id); d.conversations.forEach(c => { if (c.assignedTo === req.params.id) c.assignedTo = null; }); S.save(); res.json({ ok: true });
+  const d = D(); d.users = d.users.filter(u => u.id !== req.params.id); d.conversations.forEach(c => { if (c.assignedTo === req.params.id) c.assignedTo = null; }); S.save(); S.indexUsers(S.wsId()); res.json({ ok: true });
 }));
 // কোন টিমমেট কী কাজ করছে: কার সাথে কথা, কত মেসেজ, কী অর্ডার
 router.get('/users/:id/activity', need('team'), w(async (req, res) => {

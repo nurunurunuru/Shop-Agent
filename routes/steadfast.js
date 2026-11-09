@@ -5,8 +5,11 @@ const router = require('express').Router();
 const crypto = require('crypto');
 const S = require('../lib/store'), O = require('../lib/orders'), E = require('../lib/engine');
 
+// প্রতিটা দোকানের ওয়েবহুক URL আলাদা: /steadfast/webhook/<দোকান-আইডি> (কানেক্ট ট্যাবে দেখানো হয়)।
+// পুরোনো /steadfast/webhook (আইডি ছাড়া) শুধু আগের এক-দোকানের জন্য, .env-এর STEADFAST_WEBHOOK_TOKEN দিয়ে।
+const wantToken = () => String(S.D().settings.steadfastWebhookToken || (S.wsId() === S.reg().legacy ? process.env.STEADFAST_WEBHOOK_TOKEN : '') || '').trim();
 const tokenOk = req => {
-  const want = String(process.env.STEADFAST_WEBHOOK_TOKEN || '').trim();
+  const want = wantToken();
   const got = (/^Bearer\s+(.+)$/i.exec(String(req.headers.authorization || '')) || [])[1] || '';
   const a = Buffer.from(got.trim()), b = Buffer.from(want);
   return !!want && a.length === b.length && crypto.timingSafeEqual(a, b);
@@ -19,8 +22,13 @@ const findOrder = p => {
 // Steadfast status → আমাদের অর্ডার স্ট্যাটাস (courier.js poll-এর মতোই)
 const MAP = { delivered: 'delivered', partial_delivered: 'delivered', cancelled: 'returned' };
 
-router.post('/', async (req, res) => {
-  if (!process.env.STEADFAST_WEBHOOK_TOKEN) { console.error('Steadfast webhook: STEADFAST_WEBHOOK_TOKEN সেট নেই, রিকোয়েস্ট ফেরত দেওয়া হলো'); return res.status(503).json({ status: 'error', message: 'Webhook token not configured' }); }
+router.post(['/', '/:ws'], (req, res) => {
+  const ws = req.params.ws || S.reg().legacy;
+  if (!ws || !S.peek(ws)) return res.status(404).json({ status: 'error', message: 'Unknown shop' });
+  S.run(ws, () => handle(req, res));
+});
+async function handle(req, res) {
+  if (!wantToken()) { console.error('Steadfast webhook: webhook token সেট নেই, রিকোয়েস্ট ফেরত দেওয়া হলো'); return res.status(503).json({ status: 'error', message: 'Webhook token not configured' }); }
   if (!tokenOk(req)) return res.status(401).json({ status: 'error', message: 'Unauthorized' });
   const p = req.body || {};
   if (!p.consignment_id && !p.invoice) return res.status(400).json({ status: 'error', message: 'consignment_id or invoice required' });
@@ -43,6 +51,6 @@ router.post('/', async (req, res) => {
     }
     S.save();
   } catch (e) { console.error('Steadfast webhook:', e.message); }
-});
+}
 
 module.exports = router;

@@ -43,14 +43,14 @@ const uploadFile = async f => api('/upload', { body: { dataUrl: await prepFile(f
 let ME, SET = {}, USERS = [], tab = 'inbox', unread = 0;
 const can = p => ME.role === 'owner' || (ME.perms || []).includes(p);
 const F = { filter: 'all', platform: '', priority: '', kind: '', assignee: '', tag: '', purchased: false, q: '', cur: null, orderQ: '', orderSt: '', ordOpen: null, tUser: null };
-const TABS = [['inbox', '💬 ইনবক্স', 'inbox'], ['orders', '🧾 অর্ডার', 'orders'], ['leads', '📞 লিড', 'leads'], ['offers', '🎁 অফার', 'leads'], ['products', '🛍 প্রোডাক্ট', 'products'], ['reports', '📊 রিপোর্ট ও হিসাব', 'reports'], ['desk', '🎓 এজেন্ট ডেস্ক', 'desk'], ['team', '👥 টিম', 'team'], ['settings', '⚙ সেটিংস', 'settings']];
+const TABS = [['inbox', '💬 ইনবক্স', 'inbox'], ['orders', '🧾 অর্ডার', 'orders'], ['leads', '📞 লিড', 'leads'], ['offers', '🎁 অফার', 'leads'], ['products', '🛍 প্রোডাক্ট', 'products'], ['reports', '📊 রিপোর্ট ও হিসাব', 'reports'], ['desk', '🎓 এজেন্ট ডেস্ক', 'desk'], ['team', '👥 টিম', 'team'], ['connect', '🔗 কানেক্ট', 'settings'], ['settings', '⚙ সেটিংস', 'settings']];
 const PERM_LABEL = { inbox: 'ইনবক্স/চ্যাট', orders: 'অর্ডার', leads: 'লিড ও অফার', products: 'প্রোডাক্ট', reports: 'রিপোর্ট ও হিসাব', desk: 'এজেন্ট ডেস্ক', team: 'টিম ম্যানেজ', settings: 'সেটিংস' };
 const PRESET_LABEL = { full: 'ফুল অ্যাক্সেস', partial: 'আংশিক (চ্যাট+অর্ডার+লিড)', basic: 'বেসিক (শুধু চ্যাট)', custom: 'কাস্টম' };
 const PRESETS = { full: Object.keys(PERM_LABEL), partial: ['inbox', 'orders', 'leads'], basic: ['inbox'] };
 
 async function boot() {
   const me = await api('/me'); ME = me.user; SET = me.settings; USERS = await api('/users');
-  drawTop(); const t = location.hash.slice(1); go(TABS.some(x => x[0] === t && can(x[2])) ? t : (TABS.find(x => can(x[2])) || TABS[0])[0]); bell(); sse();
+  drawTop(); const t = location.hash.slice(1); go(TABS.some(x => x[0] === t && can(x[2])) ? t : (SET.channels === 0 && can('settings') ? 'connect' : (TABS.find(x => can(x[2])) || TABS[0])[0])); bell(); sse();
 }
 function drawTop() {
   $('#top').innerHTML = `<span class="brand">🤖 ${esc(SET.businessName || 'Shop Agent')}</span>` + TABS.filter(t => can(t[2])).map(t => `<button class="tabb ${tab === t[0] ? 'on' : ''}" data-a="tab" data-t="${t[0]}">${t[1]}</button>`).join('')
@@ -60,7 +60,7 @@ function drawTop() {
 }
 function go(t) {
   tab = t; location.hash = t; drawTop();
-  ({ inbox: viewInbox, orders: viewOrders, leads: viewLeads, offers: viewOffers, products: viewProducts, reports: viewReports, desk: viewDesk, team: viewTeam, settings: viewSettings }[t] || viewInbox)();
+  ({ inbox: viewInbox, orders: viewOrders, leads: viewLeads, offers: viewOffers, products: viewProducts, reports: viewReports, desk: viewDesk, team: viewTeam, connect: viewConnect, settings: viewSettings }[t] || viewInbox)();
 }
 
 // ===== রিয়েল-টাইম =====

@@ -62,7 +62,7 @@ Object.assign(act, {
     if (!window.FB) return toast('Facebook SDK এখনো লোড হচ্ছে — ২ সেকেন্ড পর আবার চাপুন');
     const out = $('#fbOut'); const opts = CFG.fbConfigId
       ? { config_id: CFG.fbConfigId, response_type: 'code', override_default_response_type: true }
-      : { scope: 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_engagement,instagram_basic,instagram_manage_messages,instagram_manage_comments,business_management', return_scopes: true };
+      : { scope: (CFG.scopes || 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_engagement,instagram_basic,instagram_manage_messages,instagram_manage_comments,business_management').replace(/\s+/g, ''), return_scopes: true };
     FB.login(resp => guard(async () => {
       const a = resp && resp.authResponse; if (!a) { out.innerHTML = '<div class="note">লগইন সম্পূর্ণ হয়নি বা বাতিল করা হয়েছে।</div>'; return; }
       out.innerHTML = '<div class="note">⏳ পেজ কানেক্ট হচ্ছে…</div>';

@@ -7,14 +7,19 @@ const E = require('../lib/engine'), S = require('../lib/store');
 const seen = new Set();
 const dup = id => { if (!id) return false; if (seen.has(id)) return true; seen.add(id); if (seen.size > 5000) seen.delete(seen.values().next().value); return false; };
 
+// একাধিক Meta App-এর সিক্রেট চলে: নতুন অ্যাপ (META_APP_SECRET) + পুরোনো অ্যাপ (META_APP_SECRET_OLD, কমা দিয়ে একাধিকও দেওয়া যায়)।
+// পুরোনো অ্যাপের webhook এখনো এই সার্ভারে আসলে সেটা যেন ফেরত না যায়।
+const secrets = () => [process.env.META_APP_SECRET, ...String(process.env.META_APP_SECRET_OLD || '').split(',')].map(x => String(x || '').trim()).filter(Boolean);
 const sigOk = req => {
-  const secret = process.env.META_APP_SECRET;
-  if (!secret) return true; // সিক্রেট না দিলে যাচাই বন্ধ (শুধু টেস্টে)
+  const all = secrets();
+  if (!all.length) return true; // কোনো সিক্রেট না দিলে যাচাই বন্ধ (শুধু টেস্টে)
   const got = String(req.headers['x-hub-signature-256'] || '').replace(/^sha256=/, '');
   if (!req.rawBody || !got) return false;
-  const want = crypto.createHmac('sha256', secret).update(req.rawBody).digest('hex');
-  const a = Buffer.from(got), b = Buffer.from(want);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return all.some(secret => {
+    const want = crypto.createHmac('sha256', secret).update(req.rawBody).digest('hex');
+    const a = Buffer.from(got), b = Buffer.from(want);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  });
 };
 
 router.get('/', (req, res) => {

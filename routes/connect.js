@@ -61,7 +61,8 @@ const pub = {
 // ব্রাউজারকে যা জানাতে হয় (কোনো সিক্রেট না)
 router.get('/config', (req, res) => res.json({
   ready: ready(), appId: APP_ID(), graphVersion: process.env.GRAPH_VERSION || 'v25.0',
-  fbConfigId: str(process.env.META_FB_CONFIG_ID), waConfigId: str(process.env.META_WA_CONFIG_ID), waSolutionId: str(process.env.META_WA_SOLUTION_ID),
+  fbConfigId: str(process.env.META_FB_CONFIG_ID),
+  scopes: str(process.env.META_FB_SCOPES, 600), // কমা দিয়ে; খালি থাকলে ব্রাউজারের ডিফল্ট তালিকা waConfigId: str(process.env.META_WA_CONFIG_ID), waSolutionId: str(process.env.META_WA_SOLUTION_ID),
   publicHttps: /^https:\/\//.test(publicUrl()),
 }));
 
